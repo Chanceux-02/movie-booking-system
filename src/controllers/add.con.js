@@ -1,6 +1,7 @@
-const createModel = require('../models/create.mod')
+const {createUser, storeMovie} = require('../models/create.mod')
 const bcrypt = require('bcrypt');
 const {body, validationResult} = require('express-validator');
+const fs = require('fs');
 
 const createUserProcess = async(req, res)=>{
     try {
@@ -22,7 +23,7 @@ const createUserProcess = async(req, res)=>{
         const saltRound = 10;
         const hashPwd = await bcrypt.hash(password, saltRound);
         console.log(fullname, email, hashPwd);
-        await createModel.createUser(fullname, email, hashPwd);
+        await createUser(fullname, email, hashPwd);
 
         res.status(200).send('User added successfuly!')
 
@@ -31,11 +32,42 @@ const createUserProcess = async(req, res)=>{
     }
 }
 
-const addMovieProcess = (req, res)=>{
-    const body = req.body;
-    const file = req.file;
+const addMovieProcess = async(req, res)=>{
 
-    console.log(file, body)
+    try {
+        await Promise.all([
+            body('movieName').notEmpty().withMessage('Movie name is required!').exists().trim().escape().run(req),
+            body('desc').notEmpty().withMessage('Description is required!').exists().trim().escape().run(req),
+            body('schedule').notEmpty().withMessage('Schedule is required!').run(req),
+            body('price').notEmpty().withMessage('Schedule is required!').run(req)
+      
+        ]);
+    
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            console.log('There was an error in inputs');
+            return res.status(400).json({ errors: errors.array() });
+        }
+    
+        const {movieName, desc, schedule, price} = req.body;
+        const {filename, path} = req.file;
+    
+        console.log(movieName, filename, desc, schedule, price, filename, path)
+        await storeMovie(movieName, filename, desc, schedule, price);
+        const filePath = 'public/moviesPictures/' + filename;
+        const fileData = fs.readFileSync(path);
+    
+        fs.writeFileSync(filePath, fileData);
+        fs.unlinkSync(path);
+
+
+    } catch (error) {
+        console.log('Ther was an error adding a movie in the process', error)
+        res.status(500).send('Ther was an error adding a movie in the process', error);
+    }
+
+    
+
 }
 
 

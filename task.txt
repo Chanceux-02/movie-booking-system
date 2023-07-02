@@ -1,1 +1,5 @@
-finish the insert image
+
+booking feature
+
+input 
+movie_id, user_id
